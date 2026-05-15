@@ -5,15 +5,13 @@ metadata:
   namespace: payment-api
   labels:
     app: payment-api
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
 spec:
   type: ClusterIP
   selector:
     app: payment-api
   ports:
     - name: http
-      port: 80
+      port: 8080
       targetPort: 8080
       protocol: TCP
 ---
@@ -40,4 +38,4 @@ spec:
               service:
                 name: payment-api
                 port:
-                  number: 80
+                  number: 8080
