@@ -6,16 +6,10 @@ metadata:
   labels:
     app: payment-api
     app.kubernetes.io/name: payment-api
-    app.kubernetes.io/version: "COMMIT_SHA"   # Actions가 업데이트
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-    deployment.kubernetes.io/revision: "1"
-    # 공급망 추적용 메타데이터
-    build.commit: "COMMIT_SHA"
-    build.run-id: "GITHUB_RUN_ID"
-    build.actor: "GITHUB_ACTOR"
 spec:
-  replicas: 1
+  replicas: 2    # 가용성: 2개 Pod
   selector:
     matchLabels:
       app: payment-api
@@ -23,7 +17,6 @@ spec:
     metadata:
       labels:
         app: payment-api
-        version: "COMMIT_SHA"
     spec:
       serviceAccountName: payment-api
       securityContext:
@@ -31,14 +24,29 @@ spec:
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
+        seccompProfile:           # PSS restricted 충족
+          type: RuntimeDefault
       containers:
         - name: payment-api
-          # H1: image tag 대신 digest 사용 (SP 800-204D §5.1.1)
+          # SP 800-204D §5.1.1: image digest pinning (파이프라인이 자동 업데이트)
           image: 106760547719.dkr.ecr.ap-northeast-2.amazonaws.com/jccompany/payment-api@sha256:c3eaf1e0987ec3221d208b92514e6b5663cffae1251d609f3064a89ad800fe47
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
               protocol: TCP
+          # 헬스체크 — Spring Boot Actuator
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 120
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 90
+            periodSeconds: 5
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -53,6 +61,8 @@ spec:
               cpu: "500m"
               memory: "1Gi"
           env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "prod"
             - name: JAVA_OPTS
               value: "-javaagent:/app/opentelemetry-javaagent.jar"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
@@ -67,7 +77,7 @@ spec:
         - name: otel-collector
           image: otel/opentelemetry-collector-contrib:0.96.0
           args:
-            - "--config=/etc/otel/config.yaml"
+            - "--config=/etc/otel/otel-collector-config.yaml"
           ports:
             - containerPort: 4317
               protocol: TCP
@@ -86,8 +96,12 @@ spec:
           volumeMounts:
             - name: otel-config
               mountPath: /etc/otel
+            - name: otel-tmp
+              mountPath: /tmp
       volumes:
         - name: tmp
+          emptyDir: {}
+        - name: otel-tmp
           emptyDir: {}
         - name: otel-config
           configMap:
