@@ -34,7 +34,7 @@ spec:
       containers:
         - name: payment-api
           # H1: image tag 대신 digest 사용 (SP 800-204D §5.1.1)
-          image: 106760547719.dkr.ecr.ap-northeast-2.amazonaws.com/jccompany/payment-api@sha256:IMAGE_DIGEST
+          image: 106760547719.dkr.ecr.ap-northeast-2.amazonaws.com/jccompany/payment-api@sha256:c3eaf1e0987ec3221d208b92514e6b5663cffae1251d609f3064a89ad800fe47
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
