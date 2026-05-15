@@ -1,0 +1,9 @@
+# CODEOWNERS — jccompany-gitops
+# SP 800-204D §5.1.4 / SSDF PW.7.1 / NIST CM-3
+#
+# 모든 변경은 @s1ns3nz0 승인 필요
+# GitHub Actions bot (GitHub App)만 직접 push 허용
+
+* @s1ns3nz0
+apps/payment-api/ @s1ns3nz0
+.github/ @s1ns3nz0

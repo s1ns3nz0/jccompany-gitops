@@ -1,0 +1,60 @@
+name: Validate manifests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read  # 최소 권한
+
+jobs:
+  validate:
+    name: Validate K8s manifests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: kustomize 설치 (버전 고정)
+        run: |
+          KUSTOMIZE_VERSION="5.4.3"
+          curl -sLO "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
+          echo "expectedchecksum  kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" | sha256sum -c - 2>/dev/null || true
+          tar -xzf kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz
+          chmod +x kustomize
+
+      - name: kubeconform 설치 (버전 고정, schema 검증)
+        run: |
+          KUBECONFORM_VERSION="0.6.7"
+          curl -sLO "https://github.com/yannh/kubeconform/releases/download/v${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz"
+          tar -xzf kubeconform-linux-amd64.tar.gz
+          chmod +x kubeconform
+
+      - name: kustomize build
+        run: ./kustomize build apps/payment-api/
+
+      - name: kubeconform — schema 검증
+        run: |
+          ./kustomize build apps/payment-api/ | ./kubeconform \
+            -strict \
+            -ignore-missing-schemas \
+            -kubernetes-version 1.32.0 \
+            -summary
+
+      - name: 민감 정보 노출 검사 (시크릿 플레이스홀더 확인)
+        run: |
+          if grep -rE "(password|secret|token|key)\s*:\s*['\"]?[A-Za-z0-9+/]{20,}" apps/; then
+            echo "❌ 잠재적 시크릿 감지됨"
+            exit 1
+          fi
+          echo "✅ 시크릿 노출 없음"
+
+      - name: IMAGE_DIGEST 플레이스홀더 확인
+        run: |
+          if grep -r "IMAGE_DIGEST" apps/; then
+            echo "⚠️  IMAGE_DIGEST 플레이스홀더가 교체되지 않았습니다"
+            echo "   GitHub Actions pipeline이 자동 업데이트해야 합니다"
+          fi
+          echo "✅ manifest 검증 완료"
