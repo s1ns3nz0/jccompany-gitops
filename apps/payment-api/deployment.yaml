@@ -28,7 +28,7 @@ spec:
       containers:
         - name: payment-api
           # SP 800-204D §5.1.1: image digest pinning (파이프라인이 자동 업데이트)
-          image: 106760547719.dkr.ecr.ap-northeast-2.amazonaws.com/jccompany/payment-api@sha256:daf400d1ec87b63b705676a55040d6c6466e487f6ec4cadffde14499cbb23940
+          image: 106760547719.dkr.ecr.ap-northeast-2.amazonaws.com/jccompany/payment-api@sha256:4e0cccff6411844735221840cd039fd248c6ed251bc4f7ab31176d5346d93d8b
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
